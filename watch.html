@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>프로야구 클립뷰어</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif;
+           text-align: center; padding: 48px 20px; color: #2c2c36; background: #f5f3fb; }
+    h2 { margin-bottom: 8px; }
+    .btn { display: inline-block; margin-top: 14px; padding: 12px 22px; border-radius: 24px;
+           text-decoration: none; font-weight: 700; }
+    .app { background: #16264a; color: #fff; }
+    .yt { background: #fff; color: #c30430; border: 1px solid #e3dff0; }
+    .sub { color: #9a9aac; font-size: 13px; margin-top: 22px; line-height: 1.5; }
+    .row { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  </style>
+</head>
+<body>
+  <h2>⚾ 프로야구 클립뷰어</h2>
+  <p id="msg">앱에서 영상을 여는 중...</p>
+  <div class="row">
+    <a id="open" class="btn app" href="#">📱 앱에서 보기</a>
+    <a id="yt" class="btn yt" href="#">▶ YouTube에서 보기</a>
+  </div>
+  <p class="sub">앱이 설치돼 있으면 앱에서, 없으면 YouTube로 열립니다.</p>
+  <script>
+    var v = (new URLSearchParams(location.search).get('v') || '').trim();
+    if (!v) {
+      document.getElementById('msg').textContent = '잘못된 링크입니다.';
+    } else {
+      var ytUrl = 'https://youtu.be/' + v;
+      // intent:// — 앱 설치 시 앱 열기, 미설치 시 browser_fallback_url(YouTube)로 자동 이동.
+      // 메신저 인앱 브라우저(카카오톡 등)에서도 가장 안정적으로 동작.
+      var intentUrl = 'intent://watch?v=' + encodeURIComponent(v) +
+        '#Intent;scheme=pbshorts;package=com.lgtwins.shorts;' +
+        'S.browser_fallback_url=' + encodeURIComponent(ytUrl) + ';end';
+      document.getElementById('open').href = intentUrl;
+      document.getElementById('yt').href = ytUrl;
+      // 자동 시도
+      location.href = intentUrl;
+    }
+  </script>
+</body>
+</html>
