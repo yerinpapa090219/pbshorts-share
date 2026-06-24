@@ -1,4 +1,14 @@
 <!DOCTYPE html>
+<!--
+  쇼츠 공유 랜딩 페이지 (GitHub Pages)
+
+  ?v=VIDEOID 로 열리면 설치된 앱에서 쇼츠를 재생한다.
+  시도 순서: Flutter 앱(pbviewer) → 기존 네이티브 앱(pbshorts) → YouTube.
+   - Flutter 앱 설치 시: pbviewer://watch 로 즉시 열림.
+   - 미설치 시: intent 의 browser_fallback_url 이 같은 페이지를 ?s=native 로 다시 열어
+     네이티브 앱(pbshorts)을 시도하고, 그것도 없으면 YouTube 로 이동.
+  카카오톡 등 메신저 인앱 브라우저에서도 intent:// 방식이 가장 안정적.
+-->
 <html lang="ko">
 <head>
   <meta charset="utf-8">
@@ -25,20 +35,39 @@
   </div>
   <p class="sub">앱이 설치돼 있으면 앱에서, 없으면 YouTube로 열립니다.</p>
   <script>
-    var v = (new URLSearchParams(location.search).get('v') || '').trim();
+    var params = new URLSearchParams(location.search);
+    var v = (params.get('v') || '').trim();
+    var stage = params.get('s') || 'flutter'; // flutter → native → (youtube)
+    var isAndroid = /android/i.test(navigator.userAgent);
+    var ytUrl = v ? 'https://youtu.be/' + encodeURIComponent(v) : 'https://m.youtube.com/';
+
+    // intent:// URL 생성 (scheme/package 지정 + 미설치 시 fallback 으로 이동)
+    function intentUrl(scheme, pkg, fallback) {
+      return 'intent://watch?v=' + encodeURIComponent(v) +
+        '#Intent;scheme=' + scheme + ';package=' + pkg + ';' +
+        'S.browser_fallback_url=' + encodeURIComponent(fallback) + ';end';
+    }
+    var pageBase = location.origin + location.pathname;
+    var flutterIntent = intentUrl('pbviewer', 'com.pbviewer.pbshorts_flutter',
+      pageBase + '?v=' + encodeURIComponent(v) + '&s=native'); // 없으면 네이티브 단계로
+    var nativeIntent = intentUrl('pbshorts', 'com.lgtwins.shorts', ytUrl); // 없으면 YouTube
+
+    // 버튼(자동 실행이 막힌 경우 대비)
+    document.getElementById('open').href =
+      isAndroid ? flutterIntent : ('pbviewer://watch?v=' + encodeURIComponent(v));
+    document.getElementById('yt').href = ytUrl;
+
     if (!v) {
       document.getElementById('msg').textContent = '잘못된 링크입니다.';
+    } else if (!isAndroid) {
+      // iOS/기타: 커스텀 스킴(Flutter) 시도 후 1.2초 내 전환 없으면 YouTube
+      var t = setTimeout(function () { location.href = ytUrl; }, 1200);
+      window.addEventListener('pagehide', function () { clearTimeout(t); });
+      location.href = 'pbviewer://watch?v=' + encodeURIComponent(v);
+    } else if (stage === 'native') {
+      location.href = nativeIntent;   // 2단계: 네이티브 앱 시도
     } else {
-      var ytUrl = 'https://youtu.be/' + v;
-      // intent:// — 앱 설치 시 앱 열기, 미설치 시 browser_fallback_url(YouTube)로 자동 이동.
-      // 메신저 인앱 브라우저(카카오톡 등)에서도 가장 안정적으로 동작.
-      var intentUrl = 'intent://watch?v=' + encodeURIComponent(v) +
-        '#Intent;scheme=pbshorts;package=com.lgtwins.shorts;' +
-        'S.browser_fallback_url=' + encodeURIComponent(ytUrl) + ';end';
-      document.getElementById('open').href = intentUrl;
-      document.getElementById('yt').href = ytUrl;
-      // 자동 시도
-      location.href = intentUrl;
+      location.href = flutterIntent;  // 1단계: Flutter 앱 시도
     }
   </script>
 </body>
